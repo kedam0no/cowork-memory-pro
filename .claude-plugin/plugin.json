@@ -1,0 +1,11 @@
+{
+  "name": "cowork-memory-pro",
+  "version": "1.0.0",
+  "description": "Persistent memory + smart context loading for Claude Code and Cowork. Configurable via ~/.cowork-memory/settings.json.",
+  "author": {
+    "name": "kedam0no"
+  },
+  "repository": "https://github.com/kedam0no/cowork-memory-pro",
+  "license": "MIT",
+  "keywords": ["memory", "context", "persistence", "smart", "compression"]
+}
