@@ -1,6 +1,7 @@
 {
   "name": "cowork-memory-pro",
   "version": "1.0.0",
+  "enabled": true,
   "description": "Persistent memory + smart context loading for Claude Code and Cowork. Configurable via ~/.cowork-memory/settings.json.",
   "author": {
     "name": "kedam0no"
