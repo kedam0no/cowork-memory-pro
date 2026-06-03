@@ -50,6 +50,31 @@ This means memory stays current throughout the session, not just at the end.
 If `auto_save` is true → run mem-save one final time to capture anything remaining.
 Report: `[Memory saved: N facts updated]`
 
+## Multi-Agent (くろちゃん + ローカル部隊)
+
+メインエージェント（くろちゃん）とサブエージェント（ローカル部隊）は同じ `memory.md` を共有する。
+
+**役割分担**:
+- **Main (くろちゃん)**: `mem-save` を使う。タスク分解・指示・統合担当
+- **Sub (ローカル部隊)**: `mem-sync` を使う。調査・実装・発見を記憶に書き込む
+
+**書き込み競合の解決**: lockファイル方式
+```
+~/.cowork-memory/memory.lock  ← 書き込み中のエージェントが保持
+~/.cowork-memory/memory.tmp   ← アトミック書き込み用
+```
+
+書き込みフロー:
+1. lock取得（最大10回リトライ、30秒以上古いlockはstaleとみなし強制取得）
+2. mem-mergeでfact書き込み（tmpファイル経由でアトミックにrename）
+3. lock解放
+
+**メモリ上でのエージェント識別**:
+```markdown
+- [YYYY-MM-DD][main] くろちゃんが記録した事実
+- [YYYY-MM-DD][sub:research] ローカル部隊が発見した事実
+```
+
 ## Memory format
 
 `~/.cowork-memory/memory.md` stores atomic facts, not session transcripts:
@@ -58,11 +83,11 @@ Report: `[Memory saved: N facts updated]`
 # Cowork Memory
 
 ## project-name
-- [YYYY-MM-DD] fact about this project
-- [YYYY-MM-DD] another fact
+- [YYYY-MM-DD][main] fact about this project
+- [YYYY-MM-DD][sub:research] fact found by subagent
 
 ## _global
-- [YYYY-MM-DD] user preference or cross-project fact
+- [YYYY-MM-DD][main] user preference or cross-project fact
 
 ## _tasks
 - [ ] incomplete task (YYYY-MM-DD)

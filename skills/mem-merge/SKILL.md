@@ -1,87 +1,82 @@
 ---
 name: mem-merge
-description: Merge extracted facts into memory.md using ADD/UPDATE/DELETE/NOOP logic
+description: Merge extracted facts into memory.md using ADD/UPDATE/DELETE/NOOP logic — multi-agent safe
 ---
 
 # Memory Merge
 
 Apply extracted facts to `~/.cowork-memory/memory.md` with smart deduplication.
-Never appends blindly — always compares against existing facts first.
+Multi-agent safe: always called while holding the lock (from mem-save or mem-sync).
 
 ## When to invoke
 
-- Always after mem-extract (as a pair)
-- Never invoked alone
+- From mem-save (main agent) — after acquiring lock
+- From mem-sync (subagent) — after acquiring lock
+- Never invoked directly
 
 ## Memory file format
-
-`memory.md` uses atomic fact format grouped by project:
 
 ```markdown
 # Cowork Memory
 
 ## [project-name]
-- [YYYY-MM-DD] fact text here
-- [YYYY-MM-DD] another fact
-
-## [another-project]
-- [YYYY-MM-DD] fact text here
+- [YYYY-MM-DD][main] fact text here
+- [YYYY-MM-DD][sub:research] fact found by subagent
 
 ## _global
-- [YYYY-MM-DD] ユーザーの好み・横断的な事実
+- [YYYY-MM-DD][main] ユーザーの好み・横断的な事実
 
 ## _tasks
 - [ ] incomplete task description (YYYY-MM-DD)
 - [x] completed task description (YYYY-MM-DD)
 ```
 
+`[agent-id]` タグ: `main`（メイン）または `sub:<name>`（サブエージェント）。
+agent-idがない場合は `[main]` とみなす（後方互換）。
+
 ## Merge algorithm
 
-For each fact from mem-extract:
+For each fact from mem-extract / mem-sync:
 
 1. **Find candidates** — scan memory for facts in the same project section that are semantically similar
 2. **Decide operation**:
 
 | Condition | Operation |
 |-----------|-----------|
-| No similar fact exists | **ADD** — append to project section |
-| Similar fact exists, content is the same | **NOOP** — skip |
-| Similar fact exists, content has changed or is updated | **UPDATE** — replace the old line |
-| Fact explicitly contradicts or invalidates existing fact | **DELETE** — remove old line |
-| `task_done` type received | **DELETE** matching `_tasks` incomplete entry |
+| No similar fact exists | **ADD** — append with `[YYYY-MM-DD][agent-id]` |
+| Similar fact exists, same content | **NOOP** — skip |
+| Similar fact exists, content updated | **UPDATE** — replace line (preserve original agent-id) |
+| Fact explicitly contradicts existing | **DELETE** — remove old line |
+| `task_done` received | **DELETE** matching `- [ ]` in `_tasks` |
 
-3. **Apply** — write the updated file
+3. **Apply** — write updated file atomically (write to tmp → rename)
 
 ## Section rules
 
-- `type: decision / discovery / project_fact` → goes into `## [project]` section
-- `type: preference` → goes into `## _global` section
-- `type: task_incomplete` → appended to `## _tasks` as `- [ ] ...`
-- `type: task_done` → find matching `- [ ]` in `_tasks` and mark as `- [x] ...`
+- `type: decision / discovery / project_fact` → `## [project]` section
+- `type: preference` → `## _global` section
+- `type: task_incomplete` → `## _tasks` as `- [ ] ...`
+- `type: task_done` → mark matching task as `- [x] ...`
 
-## Creating new sections
+## Atomic write
 
-If a project section doesn't exist yet, create it:
-
-```markdown
-## new-project-name
-- [YYYY-MM-DD] first fact
-```
+Always write via temp file to prevent corruption on crash:
+1. Write new content to `~/.cowork-memory/memory.tmp`
+2. Rename to `memory.md` (atomic on most filesystems)
 
 ## File bootstrap
 
 If `~/.cowork-memory/memory.md` doesn't exist:
-- Create `~/.cowork-memory/` directory
-- Write the file with just the header `# Cowork Memory`
-- Then apply ADD operations
+- Create directory
+- Write header `# Cowork Memory`
+- Apply ADD operations
 
 ## Migration from old format
 
-If the file contains old session-block format (`--- session: ...`):
-- Leave old blocks untouched in an `## _archive` section
-- Start writing new atomic facts below existing content
-- Do not try to convert old blocks automatically
+If file contains old session-block format (`--- session: ...`):
+- Move old blocks to `## _archive` section
+- Write new atomic facts in proper sections
 
 ## Output
 
-Silent — no output to user. The calling skill (mem-save) reports completion.
+Silent — caller (mem-save or mem-sync) reports completion.
