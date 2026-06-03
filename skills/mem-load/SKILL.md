@@ -1,11 +1,11 @@
 ---
 name: mem-load
-description: Load persistent memory from previous Cowork sessions
+description: Load persistent memory — supports both atomic fact format and legacy session-block format
 ---
 
 # Memory Load
 
-Use this skill to load context from previous sessions.
+Load context from `~/.cowork-memory/memory.md`.
 
 ## When to invoke
 
@@ -16,18 +16,23 @@ Use this skill to load context from previous sessions.
 ## How to load
 
 1. Read `~/.cowork-memory/memory.md`
-2. Parse all session entries
-3. Identify the most recent and most relevant entries for the current task
-4. Inject that context into your understanding of the project
+2. Detect format:
+   - **Atomic format** (has `## _tasks` or project sections with `- [YYYY-MM-DD]` lines) → parse as facts
+   - **Legacy format** (has `--- session:` blocks) → parse as session blocks
+3. Inject into context
+
+## Parsing atomic format
+
+- Each `## project-name` section = facts for that project
+- `## _global` = user preferences and cross-project facts
+- `## _tasks` = all tasks; surface only `- [ ]` (incomplete) ones
 
 ## Output
 
-After loading, briefly summarize what you found:
-
 ```
 [Memory loaded]
-前回 (YYYY-MM-DD): <1 sentence summary>
-未完了タスク: <list if any>
+未完了タスク: <list of open tasks, if any>
+関連プロジェクト: <list of project sections found>
 ```
 
-Do this concisely — do not dump the entire memory file to the user.
+Keep it concise — do not dump the entire file.

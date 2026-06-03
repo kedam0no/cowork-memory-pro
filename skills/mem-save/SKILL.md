@@ -1,59 +1,37 @@
 ---
 name: mem-save
-description: Save current session summary to persistent memory
+description: Save current session to persistent memory via automatic extraction and deduplication
 ---
 
 # Memory Save
 
-Use this skill to save the current session's context for future recall.
+Orchestrates mem-extract → mem-merge. No session block appending — only atomic facts.
 
 ## When to invoke
 
-- Automatically when the session ends
-- When the user says "保存して", "覚えておいて", "記録して", etc.
+- Automatically at session end (if `auto_save: true`)
+- Automatically after a significant task completes or decision is made
+- When the user says "保存して", "覚えておいて", "記録して"
 - When the user uses `/mem-save`
 
-## What to save
+## Steps
 
-Capture:
-- **作業内容**: What was actually done (concise bullets)
-- **決定事項**: Key decisions and their rationale
-- **未完了タスク**: Work that was started but not finished
-- **重要なコンテキスト**: File paths, credentials structure, usernames, project-specific facts, user preferences
+1. Run **mem-extract** on the current conversation
+2. If no facts were extracted → skip (nothing to save)
+3. Run **mem-merge** with the extracted facts
+4. Report result briefly
 
-## What NOT to save
+## Output
 
-- Content inside `<private>...</private>` tags
-- Sensitive credentials or tokens (note their existence/location, not the value)
-- Verbose conversation transcript
-- Trivial exchanges
-
-## Save format
-
-Append to `~/.cowork-memory/memory.md`:
-
-```markdown
-
----
-session: YYYY-MM-DD HH:MM
-project: <project name>
----
-
-## 作業内容
-- item
-
-## 決定事項
-- item
-
-## 未完了タスク
-- item
-
-## 重要なコンテキスト
-- item
+```
+[Memory saved: N facts updated]
 ```
 
-## File management
+If nothing new: `[Memory: no new facts to save]`
 
-- Create `~/.cowork-memory/` directory if it doesn't exist
-- Append new sessions; do not overwrite old ones
-- If file exceeds 50KB: summarize entries older than 30 days into a `## アーカイブ` section at the top
+## Important
+
+- Never append raw conversation text
+- Never create session blocks
+- Content inside `<private>...</private>` is never extracted or saved
+- Sensitive values (tokens, passwords) are noted by location only, never by value
