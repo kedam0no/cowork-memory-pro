@@ -12,38 +12,39 @@ Load the minimum necessary context from past sessions.
 - After ctx-analyze has produced keywords
 - At session start / after compact
 
-## Algorithm
+## Algorithm (atomic format)
 
 1. Read `~/.cowork-memory/memory.md`
-2. Split into individual session blocks (separated by `---`)
-3. For each session block, score relevance:
-   - **+3** — project name matches exactly
-   - **+2** — task_type or tech matches
-   - **+1** — any keyword found in the block
-   - **+1** — session is within last 7 days (recency bonus)
-4. Sort by score descending
-5. Load top N sessions (default: 5, configurable via settings.json `max_sessions_loaded`)
-6. Discard blocks with score 0 (completely unrelated)
+2. Identify project sections (`## project-name`)
+3. Score each section against ctx-analyze keywords:
+   - **+3** — section name matches project keyword exactly
+   - **+2** — section contains task_type or tech keyword
+   - **+1** — section contains any keyword
+4. Always include `## _global` and `## _tasks` (incomplete items only)
+5. Load sections with score ≥ threshold (from settings.json `relevance_threshold`)
+6. Cap at `max_sessions_loaded` sections
 
-## Relevance thresholds (from settings.json)
+## Algorithm (legacy session-block format)
 
-- `"high"` — only load score ≥ 4
-- `"medium"` — load score ≥ 2 (default)
-- `"low"` — load score ≥ 1
+Same scoring as before — split on `---`, score each block, load top N.
+
+## Relevance thresholds
+
+- `"high"` — score ≥ 4
+- `"medium"` — score ≥ 2 (default)
+- `"low"` — score ≥ 1
 
 ## Output
 
-Inject matched sessions into context silently, then report:
-
 ```
-[Smart Context: X sessions loaded (topic: "<project>")]
+[Smart Context: loaded projects: <list> + _tasks]
 ```
 
-If no sessions matched:
+If nothing matched:
 ```
 [Smart Context: no relevant history found]
 ```
 
 ## Fallback
 
-If keywords are empty (new session), load the 3 most recent sessions regardless of score.
+If keywords are empty (new session), load `## _global`, `## _tasks`, and the 2 most recently updated project sections.

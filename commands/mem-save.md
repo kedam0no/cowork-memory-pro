@@ -1,14 +1,10 @@
 ---
 name: mem-save
-description: Save this session's work to persistent memory
+description: Extract facts from this session and merge into persistent memory
 ---
 
-現在のセッションの内容を永続メモリに保存してください。
+mem-save スキルを実行してください（mem-extract → mem-merge のパイプライン）。
 
-mem-save スキルに従って、以下を `~/.cowork-memory/memory.md` に追記してください：
-- 今セッションで行った作業
-- 決定した事項
-- 未完了のタスク
-- 次回に必要なコンテキスト
+会話から重要な事実を自動抽出し、重複排除して `~/.cowork-memory/memory.md` に保存します。
 
-保存完了後に「保存しました ✓」と一言報告してください。
+完了後に更新されたfact数を報告してください。
